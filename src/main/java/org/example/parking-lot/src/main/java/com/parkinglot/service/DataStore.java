@@ -36,7 +36,7 @@ public class DataStore {
 
     private void initSampleData() {
         Location address = new Location("123 Main St", "Central City", "CA", "90001", "USA");
-        parkingLot = new ParkingLot("PL-001", "Central City Parking", address);
+        parkingLot = new ParkingLot("PL-001", "Community 2.0 Parking", address);
 
         // Entrance / Exit panels
         parkingLot.addEntrancePanel(new EntrancePanel("ENT-1"));
@@ -72,7 +72,7 @@ public class DataStore {
 
         // ── Accounts ─────────────────────────────────────────────────────────
         Location adminAddr = new Location("1 Admin Ave", "Central City", "CA", "90001", "USA");
-        Person adminPerson = new Person("Alice Admin", adminAddr, "alice@parking.com", "555-0001");
+        Person adminPerson = new Person("Admin", adminAddr, "alice@parking.com", "555-0001");
         accounts.add(new Admin("admin", "admin123", adminPerson));
 
         Location attAddr = new Location("2 Attendant Blvd", "Central City", "CA", "90001", "USA");
@@ -80,10 +80,10 @@ public class DataStore {
         accounts.add(new ParkingAttendant("attendant", "att123", attPerson));
 
         // ── Pre-park 4 vehicles ───────────────────────────────────────────────
-        prePark("ABC-1234", VehicleType.CAR,        ParkingSpotType.COMPACT);
-        prePark("XYZ-5678", VehicleType.TRUCK,       ParkingSpotType.LARGE);
-        prePark("EV-0001",  VehicleType.ELECTRIC,    ParkingSpotType.ELECTRIC);
-        prePark("MOTO-99",  VehicleType.MOTORCYCLE,  ParkingSpotType.MOTORCYCLE);
+        prePark("ABC-1234", VehicleType.CAR,        ParkingSpotType.COMPACT,    "Toyota");
+        prePark("XYZ-5678", VehicleType.TRUCK,       ParkingSpotType.LARGE,      "Volvo");
+        prePark("EV-0001",  VehicleType.ELECTRIC,    ParkingSpotType.ELECTRIC,   "Tesla");
+        prePark("MOTO-99",  VehicleType.MOTORCYCLE,  ParkingSpotType.MOTORCYCLE, "Honda");
     }
 
     private void addSpots(ParkingFloor floor, ParkingSpotType type, String prefix, int count) {
@@ -100,24 +100,24 @@ public class DataStore {
         }
     }
 
-    private void prePark(String plate, VehicleType vType, ParkingSpotType sType) {
-        Vehicle v = createVehicle(plate, vType);
-        ParkingTicket ticket = parkingLot.getNewParkingTicket(v, sType);
-        // Adjust issued time to simulate vehicles already parked for a while
-        // (ticket is already in activeTickets via getNewParkingTicket)
+    private void prePark(String plate, VehicleType vType, ParkingSpotType sType, String brand) {
+        Vehicle v = createVehicle(plate, vType, brand);
+        parkingLot.getNewParkingTicket(v, sType);
     }
 
     public Vehicle createVehicle(String plate, VehicleType type) {
-        return switch (type) {
-            case CAR        -> new Car(plate);
-            case TRUCK      -> new Truck(plate);
-            case ELECTRIC   -> new ElectricVehicle(plate);
-            case VAN        -> new Van(plate);
-            case MOTORCYCLE -> new Motorbike(plate);
-        };
+        return createVehicle(plate, type, "Unknown");
     }
 
-    // ─── Accessors ────────────────────────────────────────────────────────────
+    public Vehicle createVehicle(String plate, VehicleType type, String brand) {
+        return switch (type) {
+            case CAR        -> new Car(plate, brand);
+            case TRUCK      -> new Truck(plate, brand);
+            case ELECTRIC   -> new ElectricVehicle(plate, brand);
+            case VAN        -> new Van(plate, brand);
+            case MOTORCYCLE -> new Motorbike(plate, brand);
+        };
+    }
 
     public ParkingLot getParkingLot() { return parkingLot; }
     public List<Account> getAccounts() { return accounts; }

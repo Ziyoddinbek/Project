@@ -4,7 +4,13 @@ import com.parkinglot.model.Account;
 import com.parkinglot.model.accounts.Admin;
 import com.parkinglot.service.DataStore;
 import com.parkinglot.service.SceneManager;
-import com.parkinglot.ui.tabs.*;
+import com.parkinglot.ui.tabs.AdminTab;
+import com.parkinglot.ui.tabs.BuyTicketTab;
+import com.parkinglot.ui.tabs.FloorsTab;
+import com.parkinglot.ui.tabs.OverviewTab;
+import com.parkinglot.ui.tabs.PaymentsTab;
+import com.parkinglot.ui.tabs.TicketsTab;
+import com.parkinglot.ui.tabs.VehiclesTab;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -18,6 +24,7 @@ public class DashboardScreen {
     private OverviewTab overviewTab;
     private FloorsTab floorsTab;
     private TicketsTab ticketsTab;
+    private BuyTicketTab buyTicketTab;
     private VehiclesTab vehiclesTab;
     private PaymentsTab paymentsTab;
 
@@ -32,7 +39,7 @@ public class DashboardScreen {
         return new Scene(root, 1280, 800);
     }
 
-    // ── Top Bar ───────────────────────────────────────────────────────────────
+
 
     private HBox buildTopBar(Account user) {
         HBox bar = new HBox(16);
@@ -41,8 +48,16 @@ public class DashboardScreen {
         bar.setStyle("-fx-background-color:" + Styles.BG_CARD + ";" +
                 " -fx-border-color:" + Styles.BORDER + "; -fx-border-width:0 0 1 0;");
 
-        Label icon = new Label("🅿");
-        icon.setStyle("-fx-text-fill:" + Styles.ACCENT + "; -fx-font-size:22px;");
+        // C2 logo — small text badge for top bar
+        Label icon = new Label("C2");
+        icon.setStyle(
+                "-fx-text-fill:" + Styles.SUCCESS + ";" +
+                " -fx-font-size:15px;" +
+                " -fx-font-weight:bold;" +
+                " -fx-background-color:" + Styles.BG_INPUT + ";" +
+                " -fx-background-radius:6;" +
+                " -fx-padding:3 8 3 8;"
+        );
 
         Label lotName = new Label(DataStore.getInstance().getParkingLot().getName());
         lotName.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -67,7 +82,7 @@ public class DashboardScreen {
         return bar;
     }
 
-    // ── Tab Pane ──────────────────────────────────────────────────────────────
+
 
     private TabPane buildTabPane(Account user) {
         TabPane tabPane = new TabPane();
@@ -78,42 +93,44 @@ public class DashboardScreen {
         Runnable refreshAll = () -> {
             overviewTab.refresh();
             floorsTab.refresh();
-            ticketsTab.refresh();
+            if (ticketsTab != null) ticketsTab.refresh();
+            if (buyTicketTab == null) {} // no-op, stateless
             vehiclesTab.refresh();
             paymentsTab.refresh();
         };
 
         overviewTab  = new OverviewTab();
         floorsTab    = new FloorsTab();
-        ticketsTab   = new TicketsTab();
         vehiclesTab  = new VehiclesTab();
         paymentsTab  = new PaymentsTab();
 
         tabPane.getTabs().addAll(
                 overviewTab.build(),
-                floorsTab.build(refreshAll),
-                ticketsTab.build(refreshAll),
-                vehiclesTab.build(),
-                paymentsTab.build()
+                floorsTab.build(refreshAll)
         );
 
-        // Admin tab only for admins
         if (user instanceof Admin) {
+            // Admin sees full Tickets tab (table + issue + pay + mark lost)
+            ticketsTab = new TicketsTab();
+            tabPane.getTabs().add(ticketsTab.build(refreshAll));
+            tabPane.getTabs().addAll(vehiclesTab.build(), paymentsTab.build());
             AdminTab adminTab = new AdminTab();
             tabPane.getTabs().add(adminTab.build(refreshAll));
+        } else {
+            // Attendant sees only Buy Ticket form — no Vehicles tab
+            buyTicketTab = new BuyTicketTab();
+            tabPane.getTabs().addAll(buyTicketTab.build(refreshAll), paymentsTab.build());
         }
 
-        // Refresh overview when switching to it
+        // Refresh on tab switch
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, newTab) -> {
-            if (newTab != null) {
-                String tabText = newTab.getText();
-                switch (tabText) {
-                    case "Overview"  -> overviewTab.refresh();
-                    case "Floors"    -> floorsTab.refresh();
-                    case "Tickets"   -> ticketsTab.refresh();
-                    case "Vehicles"  -> vehiclesTab.refresh();
-                    case "Payments"  -> paymentsTab.refresh();
-                }
+            if (newTab == null) return;
+            switch (newTab.getText()) {
+                case "Overview"    -> overviewTab.refresh();
+                case "Floors"      -> floorsTab.refresh();
+                case "Tickets"     -> { if (ticketsTab != null) ticketsTab.refresh(); }
+                case "Vehicles"    -> vehiclesTab.refresh();
+                case "Payments"    -> paymentsTab.refresh();
             }
         });
 

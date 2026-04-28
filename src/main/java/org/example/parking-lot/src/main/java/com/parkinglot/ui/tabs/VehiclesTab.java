@@ -37,6 +37,7 @@ public class VehiclesTab {
         VBox.setVgrow(table, Priority.ALWAYS);
 
         TableColumn<ParkingTicket, String> colPlate   = col("License Plate", t -> t.getVehicle().getLicenseNumber());
+        TableColumn<ParkingTicket, String> colBrand   = col("Brand",         t -> t.getVehicle().getBrand());
         TableColumn<ParkingTicket, String> colType    = col("Vehicle Type",  t -> t.getVehicle().getType().name());
         TableColumn<ParkingTicket, String> colFloor   = col("Floor",         t -> t.getFloorName());
         TableColumn<ParkingTicket, String> colSpot    = col("Spot",          t -> t.getParkingSpot().getNumber());
@@ -45,7 +46,7 @@ public class VehiclesTab {
         TableColumn<ParkingTicket, String> colTime    = col("Time Parked",   t -> formatDuration(t.getIssuedAt()));
         TableColumn<ParkingTicket, String> colIssued  = col("Since",         t -> t.getIssuedAtFormatted());
 
-        table.getColumns().addAll(colPlate, colType, colFloor, colSpot, colSpotType, colTicket, colTime, colIssued);
+        table.getColumns().addAll(colPlate, colBrand, colType, colFloor, colSpot, colSpotType, colTicket, colTime, colIssued);
 
         data = FXCollections.observableArrayList();
         table.setItems(data);

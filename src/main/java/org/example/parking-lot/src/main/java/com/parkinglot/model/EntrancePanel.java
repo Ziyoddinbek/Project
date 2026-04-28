@@ -9,7 +9,6 @@ public class EntrancePanel {
 
     public String getId() { return id; }
 
-    /** Delegates ticket generation to the parking lot service */
     public ParkingTicket printTicket(Vehicle vehicle, ParkingSpot spot, String floorName) {
         ParkingTicket ticket = new ParkingTicket(vehicle, spot, floorName);
         vehicle.assignTicket(ticket);

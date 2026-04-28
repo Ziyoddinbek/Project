@@ -2,9 +2,11 @@ com/parkinglot/service/SceneManager.class
 com/parkinglot/ui/tabs/VehiclesTab.class
 com/parkinglot/ui/tabs/AdminTab$1RateRow.class
 com/parkinglot/ui/tabs/TicketsTab$1.class
+com/parkinglot/model/enums/VehicleBrands$1.class
 com/parkinglot/ui/tabs/OverviewTab.class
 com/parkinglot/ui/tabs/FloorsTab.class
 com/parkinglot/model/accounts/ParkingAttendant.class
+com/parkinglot/ui/tabs/BuyTicketTab.class
 com/parkinglot/model/vehicles/ElectricVehicle.class
 com/parkinglot/ui/tabs/FloorsTab$1.class
 com/parkinglot/service/DataStore.class
@@ -31,6 +33,7 @@ com/parkinglot/Main.class
 com/parkinglot/model/Payment.class
 com/parkinglot/model/EntrancePanel.class
 com/parkinglot/service/DataStore$1.class
+com/parkinglot/model/enums/VehicleBrands.class
 com/parkinglot/ui/Styles.class
 com/parkinglot/ui/tabs/AdminTab.class
 com/parkinglot/ui/DashboardScreen.class

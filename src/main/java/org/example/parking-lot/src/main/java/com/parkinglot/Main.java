@@ -16,7 +16,7 @@ public class Main extends Application {
         sm.register("login",     () -> new LoginScreen().build());
         sm.register("dashboard", () -> new DashboardScreen().build());
 
-        primaryStage.setTitle("Central City Parking — Management System");
+        primaryStage.setTitle("Community 2.0 — Parking Management System");
         primaryStage.setMinWidth(1100);
         primaryStage.setMinHeight(700);
 

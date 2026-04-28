@@ -2,6 +2,7 @@ package com.parkinglot.ui.tabs;
 
 import com.parkinglot.model.ParkingFloor;
 import com.parkinglot.model.ParkingLot;
+import com.parkinglot.model.accounts.Admin;
 import com.parkinglot.model.enums.ParkingSpotType;
 import com.parkinglot.service.DataStore;
 import com.parkinglot.ui.Styles;
@@ -45,17 +46,21 @@ public class OverviewTab {
         HBox cards = new HBox(16);
         cards.setFillHeight(true);
 
-        totalCapLabel    = statCard("Total Capacity",  String.valueOf(lot.getTotalCapacity()), Styles.TEXT, "🏢");
-        availableLabel   = statCard("Available Spots", String.valueOf(lot.getAvailableSpots()), Styles.SUCCESS, "✅");
-        activeTicketsLabel = statCard("Active Tickets", String.valueOf(lot.getActiveTickets().size()), Styles.WARNING, "🎫");
-        revenueLabel     = statCard("Today's Revenue", "$0.00", Styles.ACCENT, "💰");
+        totalCapLabel      = statCard(String.valueOf(lot.getTotalCapacity()), Styles.TEXT);
+        availableLabel     = statCard(String.valueOf(lot.getAvailableSpots()), Styles.SUCCESS);
+        activeTicketsLabel = statCard(String.valueOf(lot.getActiveTickets().size()), Styles.WARNING);
+        revenueLabel       = statCard("$0.00", Styles.ACCENT);
+
+        boolean isAdmin = DataStore.getInstance().getLoggedInUser() instanceof Admin;
 
         cards.getChildren().addAll(
-                wrapCard(totalCapLabel,     "Total Capacity",  "🏢"),
-                wrapCard(availableLabel,    "Available Spots", "✅"),
-                wrapCard(activeTicketsLabel,"Active Tickets",  "🎫"),
-                wrapCard(revenueLabel,      "Today's Revenue", "💰")
+                wrapCard(totalCapLabel,      "Total Capacity",  "🏢"),
+                wrapCard(availableLabel,     "Available Spots", "✅"),
+                wrapCard(activeTicketsLabel, "Active Tickets",  "🎫")
         );
+        if (isAdmin) {
+            cards.getChildren().add(wrapCard(revenueLabel, "Today's Revenue", "💰"));
+        }
         for (javafx.scene.Node n : cards.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
 
         // ── FULL label ────────────────────────────────────────────────────────
@@ -88,7 +93,7 @@ public class OverviewTab {
         return card;
     }
 
-    private Label statCard(String labelText, String value, String color, String icon) {
+    private Label statCard(String value, String color) {
         Label l = new Label(value);
         l.setFont(Font.font("System", FontWeight.BOLD, 28));
         l.setStyle("-fx-text-fill:" + color + ";");
@@ -140,27 +145,49 @@ public class OverviewTab {
             case LARGE       -> "#60a5fa";
             case MOTORCYCLE  -> "#c084fc";
         };
-        String emoji = switch (type) {
-            case ELECTRIC    -> "⚡";
-            case HANDICAPPED -> "♿";
-            case COMPACT     -> "🚗";
-            case LARGE       -> "🚛";
-            case MOTORCYCLE  -> "🏍";
+        // Text badges instead of emojis (emojis render black on Linux JavaFX)
+        String badge = switch (type) {
+            case ELECTRIC    -> "EV";
+            case HANDICAPPED -> "HC";
+            case COMPACT     -> "C";
+            case LARGE       -> "L";
+            case MOTORCYCLE  -> "MC";
+        };
+        String typeName = switch (type) {
+            case ELECTRIC    -> "Electric";
+            case HANDICAPPED -> "Handicapped";
+            case COMPACT     -> "Compact";
+            case LARGE       -> "Large";
+            case MOTORCYCLE  -> "Motorcycle";
         };
 
-        Label typeLabel = new Label(emoji + " " + type.name());
-        typeLabel.setStyle("-fx-text-fill:" + color + "; -fx-font-size:11px; -fx-font-weight:bold;");
+        // Colored badge circle
+        Label badgeLabel = new Label(badge);
+        badgeLabel.setStyle(
+                "-fx-text-fill: white;" +
+                " -fx-font-size:13px;" +
+                " -fx-font-weight:bold;" +
+                " -fx-background-color:" + color + ";" +
+                " -fx-background-radius:6;" +
+                " -fx-padding:3 8 3 8;"
+        );
+
+        Label typeLabel = new Label(typeName);
+        typeLabel.setStyle("-fx-text-fill:" + color + "; -fx-font-size:10px; -fx-font-weight:bold;");
 
         Label countLabel = new Label(free + "/" + total);
-        countLabel.setStyle("-fx-text-fill:" + Styles.TEXT + "; -fx-font-size:14px; -fx-font-weight:bold;");
+        countLabel.setStyle("-fx-text-fill:" + Styles.TEXT + "; -fx-font-size:15px; -fx-font-weight:bold;");
 
         Label freeLabel = new Label("free");
         freeLabel.setStyle(Styles.labelMuted());
 
-        VBox box = new VBox(2, typeLabel, countLabel, freeLabel);
+        VBox box = new VBox(4, badgeLabel, typeLabel, countLabel, freeLabel);
         box.setPadding(new Insets(10));
-        box.setStyle("-fx-background-color:" + Styles.BG_MAIN + "; -fx-background-radius:8;");
-        box.setMinWidth(90);
+        box.setStyle("-fx-background-color:" + Styles.BG_CARD +
+                "; -fx-background-radius:8;" +
+                " -fx-border-color:" + Styles.BORDER + "; -fx-border-radius:8; -fx-border-width:1;");
+        box.setMinWidth(100);
+        box.setAlignment(Pos.CENTER_LEFT);
         return box;
     }
 
@@ -171,15 +198,12 @@ public class OverviewTab {
         availableLabel.setText(String.valueOf(lot.getAvailableSpots()));
         activeTicketsLabel.setText(String.valueOf(lot.getActiveTickets().size()));
 
-        double revenue = lot.getActiveTickets().values().stream()
-                .filter(t -> !t.isActive())
-                .mapToDouble(com.parkinglot.model.ParkingTicket::getPaidAmount)
-                .sum();
-        // Also count from payment history
-        double histRevenue = DataStore.getInstance().getPaymentHistory().stream()
-                .mapToDouble(com.parkinglot.model.Payment::getAmount)
-                .sum();
-        revenueLabel.setText(String.format("$%.2f", histRevenue));
+        if (DataStore.getInstance().getLoggedInUser() instanceof Admin) {
+            double histRevenue = DataStore.getInstance().getPaymentHistory().stream()
+                    .mapToDouble(com.parkinglot.model.Payment::getAmount)
+                    .sum();
+            revenueLabel.setText(String.format("$%.2f", histRevenue));
+        }
 
         fullLabel.setVisible(lot.isFull());
         fullLabel.setManaged(lot.isFull());

@@ -14,7 +14,6 @@ public class CreditCardTransaction extends Payment {
 
     @Override
     public boolean initiateTransaction() {
-        // Simulate always-successful credit card transaction
         setStatus(PaymentStatus.COMPLETED);
         return true;
     }

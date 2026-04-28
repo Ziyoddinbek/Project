@@ -3,6 +3,7 @@ package com.parkinglot.ui.tabs;
 import com.parkinglot.model.ParkingFloor;
 import com.parkinglot.model.ParkingLot;
 import com.parkinglot.model.ParkingSpot;
+import com.parkinglot.model.accounts.Admin;
 import com.parkinglot.model.enums.ParkingSpotType;
 import com.parkinglot.service.DataStore;
 import com.parkinglot.ui.Styles;
@@ -55,77 +56,99 @@ public class FloorsTab {
             if (newVal != null) showFloorSpots(newVal);
         });
 
-        // Add Floor button
-        Button addFloorBtn = new Button("+ Add Floor");
-        addFloorBtn.setStyle(Styles.accentButton());
-        addFloorBtn.setMaxWidth(Double.MAX_VALUE);
-        addFloorBtn.setOnMouseEntered(e -> addFloorBtn.setStyle(Styles.button(Styles.ACCENT_HOVER, "white")));
-        addFloorBtn.setOnMouseExited(e -> addFloorBtn.setStyle(Styles.accentButton()));
-        addFloorBtn.setOnAction(e -> showAddFloorDialog());
-
-        Button removeFloorBtn = new Button("Remove Floor");
-        removeFloorBtn.setStyle(Styles.dangerButton());
-        removeFloorBtn.setMaxWidth(Double.MAX_VALUE);
-        removeFloorBtn.setOnMouseEntered(e -> removeFloorBtn.setStyle(Styles.button("#b91c1c", "white")));
-        removeFloorBtn.setOnMouseExited(e -> removeFloorBtn.setStyle(Styles.dangerButton()));
-        removeFloorBtn.setOnAction(e -> {
-            String selected = floorList.getSelectionModel().getSelectedItem();
-            if (selected == null) { showAlert("Select a floor first."); return; }
-            ParkingLot lot = DataStore.getInstance().getParkingLot();
-            boolean removed = lot.removeParkingFloor(selected);
-            if (!removed) {
-                showAlert("Cannot remove floor: it has occupied spots or doesn't exist.");
-            } else {
-                refreshFloorList();
-                spotGrid.getChildren().clear();
-                floorDetailTitle.setText("Select a floor");
-                refreshCallback.run();
-            }
-        });
-
         VBox.setVgrow(floorList, Priority.ALWAYS);
-        box.getChildren().addAll(title, floorList, addFloorBtn, removeFloorBtn);
+        box.getChildren().addAll(title, floorList);
+
+        // Add/Remove Floor buttons — Admin only
+        boolean isAdmin = DataStore.getInstance().getLoggedInUser() instanceof Admin;
+        if (isAdmin) {
+            Button addFloorBtn = new Button("+ Add Floor");
+            addFloorBtn.setStyle(Styles.accentButton());
+            addFloorBtn.setMaxWidth(Double.MAX_VALUE);
+            addFloorBtn.setOnMouseEntered(e -> addFloorBtn.setStyle(Styles.button(Styles.ACCENT_HOVER, "white")));
+            addFloorBtn.setOnMouseExited(e -> addFloorBtn.setStyle(Styles.accentButton()));
+            addFloorBtn.setOnAction(e -> showAddFloorDialog());
+
+            Button removeFloorBtn = new Button("Remove Floor");
+            removeFloorBtn.setStyle(Styles.dangerButton());
+            removeFloorBtn.setMaxWidth(Double.MAX_VALUE);
+            removeFloorBtn.setOnMouseEntered(e -> removeFloorBtn.setStyle(Styles.button("#b91c1c", "white")));
+            removeFloorBtn.setOnMouseExited(e -> removeFloorBtn.setStyle(Styles.dangerButton()));
+            removeFloorBtn.setOnAction(e -> {
+                String selected = floorList.getSelectionModel().getSelectedItem();
+                if (selected == null) { showAlert("Select a floor first."); return; }
+                ParkingLot lot = DataStore.getInstance().getParkingLot();
+                boolean removed = lot.removeParkingFloor(selected);
+                if (!removed) {
+                    showAlert("Cannot remove floor: it has occupied spots or doesn't exist.");
+                } else {
+                    refreshFloorList();
+                    spotGrid.getChildren().clear();
+                    floorDetailTitle.setText("Select a floor");
+                    refreshCallback.run();
+                }
+            });
+
+            box.getChildren().addAll(addFloorBtn, removeFloorBtn);
+        }
         return box;
     }
 
     private VBox buildSpotDetail() {
         VBox box = new VBox(16);
-        box.setPadding(new Insets(16));
+        box.setPadding(new Insets(20));
         box.setStyle(Styles.mainBackground());
 
+        // ── Header ────────────────────────────────────────────────────────────
         floorDetailTitle = new Label("Select a floor to view spots");
-        floorDetailTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        floorDetailTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
         floorDetailTitle.setStyle("-fx-text-fill:" + Styles.TEXT + ";");
 
-        // Legend
-        HBox legend = new HBox(16);
+        // ── Legend ────────────────────────────────────────────────────────────
+        Label legendTitle = new Label("SPOT TYPES");
+        legendTitle.setStyle(Styles.sectionTitle());
+
+        HBox legend = new HBox(8);
         legend.setAlignment(Pos.CENTER_LEFT);
         legend.getChildren().addAll(
-                legendItem("Free",        Styles.SPOT_FREE,        Styles.SPOT_FREE_TEXT),
-                legendItem("Occupied",    Styles.SPOT_OCCUPIED,    Styles.SPOT_OCCUPIED_TEXT),
-                legendItem("Electric",    Styles.SPOT_ELECTRIC,    Styles.SPOT_ELECTRIC_TEXT),
-                legendItem("Handicapped", Styles.SPOT_HANDICAPPED, Styles.SPOT_HANDICAPPED_TEXT)
+                legendPill("C",  "Compact",     Styles.SUCCESS,              "#0a3d1c"),
+                legendPill("L",  "Large",        "#60a5fa",                   "#0a1f3d"),
+                legendPill("MC", "Motorcycle",   "#c084fc",                   "#2d1a4a"),
+                legendPill("EV", "Electric",     Styles.SPOT_ELECTRIC_TEXT,   Styles.SPOT_ELECTRIC),
+                legendPill("HC", "Handicapped",  Styles.SPOT_HANDICAPPED_TEXT,Styles.SPOT_HANDICAPPED),
+                legendPill("X",  "Occupied",     Styles.SPOT_OCCUPIED_TEXT,   Styles.SPOT_OCCUPIED)
         );
 
-        spotGrid = new VBox(12);
+        spotGrid = new VBox(20);
 
         ScrollPane scroll = new ScrollPane(spotGrid);
         scroll.setFitToWidth(true);
+        scroll.setPadding(new Insets(4, 0, 4, 0));
         scroll.setStyle("-fx-background-color:" + Styles.BG_MAIN + "; -fx-background:" + Styles.BG_MAIN + ";");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        box.getChildren().addAll(floorDetailTitle, legend, scroll);
+        box.getChildren().addAll(floorDetailTitle, legendTitle, legend,
+                new Separator(), scroll);
         return box;
     }
 
-    private HBox legendItem(String text, String bg, String fg) {
-        Label box = new Label("  ");
-        box.setStyle("-fx-background-color:" + bg + "; -fx-background-radius:4; -fx-min-width:20; -fx-min-height:20;");
-        Label lbl = new Label(text);
-        lbl.setStyle("-fx-text-fill:" + fg + "; -fx-font-size:12px;");
-        HBox h = new HBox(6, box, lbl);
-        h.setAlignment(Pos.CENTER_LEFT);
-        return h;
+    /** A pill-shaped legend item with badge + label */
+    private HBox legendPill(String badge, String label, String fg, String bg) {
+        Label badgeLbl = new Label(badge);
+        badgeLbl.setStyle(
+                "-fx-text-fill:white; -fx-font-size:10px; -fx-font-weight:bold;" +
+                " -fx-background-color:" + fg + "; -fx-background-radius:4;" +
+                " -fx-padding:2 6 2 6; -fx-min-width:24;"
+        );
+        Label nameLbl = new Label(label);
+        nameLbl.setStyle("-fx-text-fill:" + fg + "; -fx-font-size:11px;");
+
+        HBox pill = new HBox(5, badgeLbl, nameLbl);
+        pill.setAlignment(Pos.CENTER_LEFT);
+        pill.setPadding(new Insets(5, 10, 5, 10));
+        pill.setStyle("-fx-background-color:" + bg + "; -fx-background-radius:20;" +
+                " -fx-border-color:" + fg + "; -fx-border-radius:20; -fx-border-width:1;");
+        return pill;
     }
 
     private void showFloorSpots(String floorName) {
@@ -135,74 +158,223 @@ public class FloorsTab {
                 .findFirst().orElse(null);
         if (floor == null) return;
 
-        floorDetailTitle.setText(floorName + "  —  " + floor.getAvailableCount() + "/" + floor.getTotalCapacity() + " available");
+        int avail = floor.getAvailableCount();
+        int total = floor.getTotalCapacity();
+        int used  = total - avail;
+
+        floorDetailTitle.setText(floorName);
         spotGrid.getChildren().clear();
 
+        // ── Floor summary bar ─────────────────────────────────────────────────
+        HBox summaryBar = new HBox(20);
+        summaryBar.setPadding(new Insets(14, 18, 14, 18));
+        summaryBar.setStyle("-fx-background-color:" + Styles.BG_CARD +
+                "; -fx-background-radius:10;" +
+                " -fx-border-color:" + Styles.BORDER + "; -fx-border-radius:10; -fx-border-width:1;");
+        summaryBar.setAlignment(Pos.CENTER_LEFT);
+
+        summaryBar.getChildren().addAll(
+                summaryItem("Total Spots",  String.valueOf(total), Styles.TEXT),
+                summaryDivider(),
+                summaryItem("Available",    String.valueOf(avail), Styles.SUCCESS),
+                summaryDivider(),
+                summaryItem("Occupied",     String.valueOf(used),  Styles.ERROR),
+                summaryDivider(),
+                summaryItem("Utilization",  String.format("%.0f%%", total > 0 ? (used * 100.0 / total) : 0),
+                        used > total * 0.8 ? Styles.ERROR : Styles.WARNING)
+        );
+
+        // Progress bar
+        ProgressBar pb = new ProgressBar(total > 0 ? (double) used / total : 0);
+        pb.setMaxWidth(Double.MAX_VALUE);
+        pb.setPrefHeight(6);
+        String pbColor = floor.isFull() ? Styles.ERROR : (used > total * 0.8 ? Styles.WARNING : Styles.SUCCESS);
+        pb.setStyle("-fx-accent:" + pbColor + ";");
+
+        VBox summaryBox = new VBox(8, summaryBar, pb);
+        spotGrid.getChildren().add(summaryBox);
+
+        // ── Spots by type ─────────────────────────────────────────────────────
         for (ParkingSpotType type : ParkingSpotType.values()) {
             List<ParkingSpot> spots = floor.getAllSpots().stream()
                     .filter(s -> s.getType() == type).toList();
             if (spots.isEmpty()) continue;
 
-            Label typeLabel = new Label(type.name() + " SPOTS");
-            typeLabel.setStyle(Styles.sectionTitle());
+            long freeCount = spots.stream().filter(ParkingSpot::getIsFree).count();
+            String typeColor = typeColor(type);
+            String typeBadge = typeBadge(type);
+            String typeName  = typeName(type);
 
-            FlowPane flow = new FlowPane(8, 8);
-            flow.setPrefWrapLength(700);
+            // Section header
+            HBox sectionHeader = new HBox(10);
+            sectionHeader.setAlignment(Pos.CENTER_LEFT);
+            sectionHeader.setPadding(new Insets(6, 0, 2, 0));
 
+            Label badgeLbl = new Label(typeBadge);
+            badgeLbl.setStyle(
+                    "-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold;" +
+                    " -fx-background-color:" + typeColor + "; -fx-background-radius:5;" +
+                    " -fx-padding:3 8 3 8;"
+            );
+            Label nameLbl = new Label(typeName + " SPOTS");
+            nameLbl.setStyle("-fx-text-fill:" + typeColor + "; -fx-font-size:12px; -fx-font-weight:bold;");
+
+            Label countLbl = new Label(freeCount + "/" + spots.size() + " free");
+            countLbl.setStyle("-fx-text-fill:" + Styles.TEXT_MUTED + "; -fx-font-size:11px;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            sectionHeader.getChildren().addAll(badgeLbl, nameLbl, spacer, countLbl);
+
+            FlowPane flow = new FlowPane(10, 10);
+            flow.setPrefWrapLength(900);
             for (ParkingSpot spot : spots) {
-                VBox cell = buildSpotCell(spot);
-                flow.getChildren().add(cell);
+                flow.getChildren().add(buildSpotCell(spot, typeColor, typeBadge));
             }
 
-            spotGrid.getChildren().addAll(typeLabel, flow);
+            VBox section = new VBox(8, sectionHeader, flow);
+            section.setPadding(new Insets(12, 14, 12, 14));
+            section.setStyle("-fx-background-color:" + Styles.BG_CARD +
+                    "; -fx-background-radius:10;" +
+                    " -fx-border-color:" + typeColor + "44" +
+                    "; -fx-border-radius:10; -fx-border-width:1;");
+
+            spotGrid.getChildren().add(section);
         }
     }
 
-    private VBox buildSpotCell(ParkingSpot spot) {
+    private VBox buildSpotCell(ParkingSpot spot, String typeColor, String typeBadge) {
         boolean free = spot.getIsFree();
-        String bg, fg;
 
-        if (!free) {
-            bg = Styles.SPOT_OCCUPIED;
-            fg = Styles.SPOT_OCCUPIED_TEXT;
-        } else {
-            bg = switch (spot.getType()) {
-                case ELECTRIC    -> Styles.SPOT_ELECTRIC;
-                case HANDICAPPED -> Styles.SPOT_HANDICAPPED;
-                default          -> Styles.SPOT_FREE;
-            };
-            fg = switch (spot.getType()) {
-                case ELECTRIC    -> Styles.SPOT_ELECTRIC_TEXT;
-                case HANDICAPPED -> Styles.SPOT_HANDICAPPED_TEXT;
-                default          -> Styles.SPOT_FREE_TEXT;
-            };
-        }
+        String bg = free ? Styles.BG_MAIN : Styles.SPOT_OCCUPIED;
+        String borderColor = free ? typeColor : Styles.SPOT_OCCUPIED_TEXT;
+        String statusColor = free ? Styles.SUCCESS : Styles.ERROR;
+
+        // Top row: badge + spot number
+        Label badgeLbl = new Label(typeBadge);
+        badgeLbl.setStyle(
+                "-fx-text-fill:white; -fx-font-size:9px; -fx-font-weight:bold;" +
+                " -fx-background-color:" + (free ? typeColor : Styles.SPOT_OCCUPIED_TEXT) + ";" +
+                " -fx-background-radius:3; -fx-padding:1 5 1 5;"
+        );
 
         Label numLabel = new Label(spot.getNumber());
-        numLabel.setStyle("-fx-text-fill:" + Styles.TEXT + "; -fx-font-weight:bold; -fx-font-size:12px;");
+        numLabel.setFont(Font.font("System", FontWeight.BOLD, 13));
+        numLabel.setStyle("-fx-text-fill:" + Styles.TEXT + ";");
 
+        // Status dot + text
+        Label dotLabel = new Label("  ");
+        dotLabel.setStyle(
+                "-fx-background-color:" + statusColor + ";" +
+                " -fx-background-radius:50; -fx-min-width:8; -fx-min-height:8;" +
+                " -fx-max-width:8; -fx-max-height:8;"
+        );
         Label statusLabel = new Label(free ? "FREE" : "OCCUPIED");
-        statusLabel.setStyle("-fx-text-fill:" + fg + "; -fx-font-size:10px; -fx-font-weight:bold;");
+        statusLabel.setStyle("-fx-text-fill:" + statusColor + "; -fx-font-size:9px; -fx-font-weight:bold;");
 
-        VBox cell = new VBox(4, numLabel, statusLabel);
-        cell.setPadding(new Insets(10));
-        cell.setAlignment(Pos.CENTER);
-        cell.setPrefWidth(90);
-        cell.setPrefHeight(70);
-        cell.setStyle("-fx-background-color:" + bg + "; -fx-background-radius:8;");
+        HBox statusRow = new HBox(4, dotLabel, statusLabel);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
 
+        VBox cell = new VBox(5, badgeLbl, numLabel, statusRow);
+        cell.setPadding(new Insets(10, 12, 10, 12));
+        cell.setAlignment(Pos.TOP_LEFT);
+        cell.setPrefWidth(105);
+        cell.setMinHeight(85);
+        cell.setStyle(
+                "-fx-background-color:" + bg + ";" +
+                " -fx-background-radius:10;" +
+                " -fx-border-color:" + borderColor + ";" +
+                " -fx-border-radius:10; -fx-border-width:1.5;" +
+                " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0, 0, 2);"
+        );
+
+        // Vehicle info if occupied
         if (!free && spot.getVehicle() != null) {
             Label plateLabel = new Label(spot.getVehicle().getLicenseNumber());
             plateLabel.setStyle("-fx-text-fill:" + Styles.TEXT_MUTED + "; -fx-font-size:9px;");
-            cell.getChildren().add(plateLabel);
+            Label brandLabel = new Label(spot.getVehicle().getBrand());
+            brandLabel.setStyle("-fx-text-fill:" + Styles.TEXT_MUTED + "; -fx-font-size:9px;");
+            cell.getChildren().addAll(plateLabel, brandLabel);
         }
 
-        // Tooltip
-        Tooltip tip = new Tooltip(spot.getType().name() + " | " + spot.getNumber() +
-                (free ? " | FREE" : " | " + (spot.getVehicle() != null ? spot.getVehicle().getLicenseNumber() : "OCCUPIED")));
+        // Hover effect
+        cell.setOnMouseEntered(e -> cell.setStyle(
+                "-fx-background-color:" + (free ? Styles.BG_CARD : "#5a1010") + ";" +
+                " -fx-background-radius:10;" +
+                " -fx-border-color:" + borderColor + ";" +
+                " -fx-border-radius:10; -fx-border-width:2;" +
+                " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0, 0, 3);" +
+                " -fx-cursor:hand;"
+        ));
+        cell.setOnMouseExited(e -> cell.setStyle(
+                "-fx-background-color:" + bg + ";" +
+                " -fx-background-radius:10;" +
+                " -fx-border-color:" + borderColor + ";" +
+                " -fx-border-radius:10; -fx-border-width:1.5;" +
+                " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0, 0, 2);"
+        ));
+
+        Tooltip tip = new Tooltip(
+                typeName(spot.getType()) + "  |  " + spot.getNumber() + "\n" +
+                (free ? "Status: FREE"
+                      : "Status: OCCUPIED\n" +
+                        "Plate:  " + spot.getVehicle().getLicenseNumber() + "\n" +
+                        "Brand:  " + spot.getVehicle().getBrand())
+        );
+        tip.setStyle("-fx-font-size:12px;");
         Tooltip.install(cell, tip);
 
         return cell;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private VBox summaryItem(String label, String value, String color) {
+        Label valLbl = new Label(value);
+        valLbl.setFont(Font.font("System", FontWeight.BOLD, 20));
+        valLbl.setStyle("-fx-text-fill:" + color + ";");
+        Label lblLbl = new Label(label);
+        lblLbl.setStyle(Styles.labelMuted());
+        VBox v = new VBox(2, valLbl, lblLbl);
+        v.setAlignment(Pos.CENTER_LEFT);
+        return v;
+    }
+
+    private Label summaryDivider() {
+        Label l = new Label("|");
+        l.setStyle("-fx-text-fill:" + Styles.BORDER + "; -fx-font-size:20px;");
+        return l;
+    }
+
+    private String typeColor(ParkingSpotType type) {
+        return switch (type) {
+            case COMPACT     -> Styles.SUCCESS;
+            case LARGE       -> "#60a5fa";
+            case MOTORCYCLE  -> "#c084fc";
+            case ELECTRIC    -> Styles.SPOT_ELECTRIC_TEXT;
+            case HANDICAPPED -> Styles.SPOT_HANDICAPPED_TEXT;
+        };
+    }
+
+    private String typeBadge(ParkingSpotType type) {
+        return switch (type) {
+            case COMPACT     -> "C";
+            case LARGE       -> "L";
+            case MOTORCYCLE  -> "MC";
+            case ELECTRIC    -> "EV";
+            case HANDICAPPED -> "HC";
+        };
+    }
+
+    private String typeName(ParkingSpotType type) {
+        return switch (type) {
+            case COMPACT     -> "Compact";
+            case LARGE       -> "Large";
+            case MOTORCYCLE  -> "Motorcycle";
+            case ELECTRIC    -> "Electric";
+            case HANDICAPPED -> "Handicapped";
+        };
     }
 
     public void refreshFloorList() {

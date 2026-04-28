@@ -1,8 +1,10 @@
 package com.parkinglot.ui.tabs;
 
 import com.parkinglot.model.*;
+import com.parkinglot.model.accounts.Admin;
 import com.parkinglot.model.enums.ParkingSpotType;
 import com.parkinglot.model.enums.PaymentType;
+import com.parkinglot.model.enums.VehicleBrands;
 import com.parkinglot.model.enums.VehicleType;
 import com.parkinglot.model.payments.CashTransaction;
 import com.parkinglot.model.payments.CreditCardTransaction;
@@ -71,7 +73,6 @@ public class TicketsTab {
             if (selected == null) { showAlert("Select a ticket first."); return; }
             if (!selected.isActive()) { showAlert("Ticket is not active."); return; }
             selected.markLost();
-            // Free the spot
             freeSpot(selected);
             refresh();
             refreshCallback.run();
@@ -81,7 +82,12 @@ public class TicketsTab {
         refreshBtn.setStyle(Styles.button(Styles.BG_CARD, Styles.TEXT));
         refreshBtn.setOnAction(e -> refresh());
 
-        toolbar.getChildren().addAll(issueBtn, payBtn, lostBtn, refreshBtn);
+        toolbar.getChildren().addAll(issueBtn, payBtn);
+        // Mark Lost is Admin-only
+        if (DataStore.getInstance().getLoggedInUser() instanceof Admin) {
+            toolbar.getChildren().add(lostBtn);
+        }
+        toolbar.getChildren().add(refreshBtn);
 
         // Table
         table = new TableView<>();
@@ -91,6 +97,7 @@ public class TicketsTab {
 
         TableColumn<ParkingTicket, String> colNum    = col("Ticket #",      t -> t.getTicketNumber());
         TableColumn<ParkingTicket, String> colPlate  = col("License Plate", t -> t.getVehicle().getLicenseNumber());
+        TableColumn<ParkingTicket, String> colBrand  = col("Brand",         t -> t.getVehicle().getBrand());
         TableColumn<ParkingTicket, String> colType   = col("Vehicle Type",  t -> t.getVehicle().getType().name());
         TableColumn<ParkingTicket, String> colFloor  = col("Floor",         t -> t.getFloorName());
         TableColumn<ParkingTicket, String> colSpot   = col("Spot",          t -> t.getParkingSpot().getNumber());
@@ -118,7 +125,7 @@ public class TicketsTab {
             }
         });
 
-        table.getColumns().addAll(colNum, colPlate, colType, colFloor, colSpot, colIssued, colDur, colAmt, colStatus);
+        table.getColumns().addAll(colNum, colPlate, colBrand, colType, colFloor, colSpot, colIssued, colDur, colAmt, colStatus);
 
         ticketData = FXCollections.observableArrayList();
         table.setItems(ticketData);
@@ -158,21 +165,34 @@ public class TicketsTab {
         plateField.setPromptText("e.g. ABC-1234");
         plateField.setStyle(Styles.input());
 
-        ChoiceBox<VehicleType> vehicleTypeBox = new ChoiceBox<>(
+        ComboBox<VehicleType> vehicleTypeBox = new ComboBox<>(
                 FXCollections.observableArrayList(VehicleType.values()));
         vehicleTypeBox.setValue(VehicleType.CAR);
         vehicleTypeBox.setMaxWidth(Double.MAX_VALUE);
-        vehicleTypeBox.setStyle(Styles.input());
+        vehicleTypeBox.setStyle(Styles.comboBox());
 
-        ChoiceBox<ParkingSpotType> spotTypeBox = new ChoiceBox<>(
+        // Brand list — updates when vehicle type changes
+        ComboBox<String> brandBox = new ComboBox<>(
+                FXCollections.observableArrayList(VehicleBrands.forType(VehicleType.CAR)));
+        brandBox.setValue(VehicleBrands.forType(VehicleType.CAR).get(0));
+        brandBox.setMaxWidth(Double.MAX_VALUE);
+        brandBox.setStyle(Styles.comboBox());
+
+        ComboBox<ParkingSpotType> spotTypeBox = new ComboBox<>(
                 FXCollections.observableArrayList(ParkingSpotType.values()));
         spotTypeBox.setValue(ParkingSpotType.COMPACT);
         spotTypeBox.setMaxWidth(Double.MAX_VALUE);
-        spotTypeBox.setStyle(Styles.input());
+        spotTypeBox.setStyle(Styles.comboBox());
 
-        // Auto-select spot type based on vehicle type
+        // Auto-update brand list and spot type when vehicle type changes
         vehicleTypeBox.valueProperty().addListener((obs, old, newVal) -> {
-            if (newVal == VehicleType.ELECTRIC)   spotTypeBox.setValue(ParkingSpotType.ELECTRIC);
+            if (newVal == null) return;
+            // Update brands
+            var brands = FXCollections.observableArrayList(VehicleBrands.forType(newVal));
+            brandBox.setItems(brands);
+            brandBox.setValue(brands.get(0));
+            // Update spot preference
+            if (newVal == VehicleType.ELECTRIC)        spotTypeBox.setValue(ParkingSpotType.ELECTRIC);
             else if (newVal == VehicleType.MOTORCYCLE) spotTypeBox.setValue(ParkingSpotType.MOTORCYCLE);
             else if (newVal == VehicleType.TRUCK || newVal == VehicleType.VAN)
                 spotTypeBox.setValue(ParkingSpotType.LARGE);
@@ -182,7 +202,7 @@ public class TicketsTab {
         TextArea resultArea = new TextArea();
         resultArea.setEditable(false);
         resultArea.setPrefHeight(140);
-        resultArea.setStyle("-fx-control-inner-background:" + Styles.BG_MAIN + "; -fx-text-fill:" + Styles.SUCCESS +
+        resultArea.setStyle("-fx-control-inner-background:" + Styles.BG_CARD + "; -fx-text-fill:" + Styles.SUCCESS +
                 "; -fx-font-family:monospace; -fx-font-size:12px;");
         resultArea.setVisible(false);
         resultArea.setManaged(false);
@@ -195,14 +215,16 @@ public class TicketsTab {
         GridPane form = new GridPane();
         form.setHgap(12); form.setVgap(12);
         form.setPadding(new Insets(16));
-        form.add(styledLabel("License Plate:"), 0, 0);
-        form.add(plateField, 1, 0);
-        form.add(styledLabel("Vehicle Type:"), 0, 1);
+        form.add(styledLabel("License Plate:"),  0, 0);
+        form.add(plateField,    1, 0);
+        form.add(styledLabel("Vehicle Type:"),   0, 1);
         form.add(vehicleTypeBox, 1, 1);
-        form.add(styledLabel("Spot Preference:"), 0, 2);
-        form.add(spotTypeBox, 1, 2);
-        form.add(warningLabel, 0, 3, 2, 1);
-        form.add(resultArea, 0, 4, 2, 1);
+        form.add(styledLabel("Brand / Make:"),   0, 2);
+        form.add(brandBox,      1, 2);
+        form.add(styledLabel("Spot Preference:"), 0, 3);
+        form.add(spotTypeBox,   1, 3);
+        form.add(warningLabel,  0, 4, 2, 1);
+        form.add(resultArea,    0, 5, 2, 1);
         ColumnConstraints c0 = new ColumnConstraints(130);
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
@@ -232,6 +254,7 @@ public class TicketsTab {
 
             VehicleType vType = vehicleTypeBox.getValue();
             ParkingSpotType sType = spotTypeBox.getValue();
+            String brand = brandBox.getValue() != null ? brandBox.getValue() : "Unknown";
 
             // Warn if electric vehicle not requesting electric spot
             if (vType == VehicleType.ELECTRIC && sType != ParkingSpotType.ELECTRIC) {
@@ -241,7 +264,7 @@ public class TicketsTab {
                 warningLabel.setManaged(true);
             }
 
-            Vehicle vehicle = DataStore.getInstance().createVehicle(plate, vType);
+            Vehicle vehicle = DataStore.getInstance().createVehicle(plate, vType, brand);
             ParkingTicket ticket = lot.getNewParkingTicket(vehicle, sType);
 
             if (ticket == null) {
@@ -265,6 +288,7 @@ public class TicketsTab {
                     "Ticket #:     " + ticket.getTicketNumber() + "\n" +
                     "License Plate:" + ticket.getVehicle().getLicenseNumber() + "\n" +
                     "Vehicle Type: " + ticket.getVehicle().getType().name() + "\n" +
+                    "Brand / Make: " + ticket.getVehicle().getBrand() + "\n" +
                     "Floor:        " + ticket.getFloorName() + "\n" +
                     "Spot:         " + ticket.getParkingSpot().getNumber() + "\n" +
                     "Spot Type:    " + ticket.getParkingSpot().getType().name() + "\n" +

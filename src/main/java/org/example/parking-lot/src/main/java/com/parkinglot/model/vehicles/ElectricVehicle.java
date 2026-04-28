@@ -4,7 +4,7 @@ import com.parkinglot.model.Vehicle;
 import com.parkinglot.model.enums.VehicleType;
 
 public class ElectricVehicle extends Vehicle {
-    public ElectricVehicle(String licenseNumber) {
-        super(licenseNumber, VehicleType.ELECTRIC);
+    public ElectricVehicle(String licenseNumber, String brand) {
+        super(licenseNumber, VehicleType.ELECTRIC, brand);
     }
 }
